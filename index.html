@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cooperative TAMP for Quadruped Robots with LLMs</title>
+<meta name="description" content="Cooperative task and motion planning for two quadruped robots with large language models: the planner invents motions it needs, keyframes are turned into trajectories, and the robots climb onto each other or push boxes to build a bridge.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+:root{
+  --bg:#fbfaf7; --fg:#1d1f24; --muted:#5d6370; --line:#e3e0d8; --card:#ffffff;
+  --blue:#2563c9; --red:#c8402f; --accent:#2563c9; --code:#f3f1ec;
+  --serif:"Source Serif 4",Georgia,"Times New Roman",serif; --sans:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#14161a; --fg:#e7e5e0; --muted:#a3a7b0; --line:#2b2f36; --card:#1b1e23; --blue:#6f9cf0; --red:#ef7a69; --accent:#6f9cf0; --code:#1f2329}
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 var(--sans)}
+.wrap{max-width:980px;margin:0 auto;padding:0 max(20px,env(safe-area-inset-left))}
+.narrow{max-width:760px;margin:0 auto}
+header.hero{padding:64px 0 28px;text-align:center}
+h1{font:600 clamp(28px,4.4vw,44px)/1.15 var(--serif);margin:0 0 18px;text-wrap:balance;letter-spacing:-0.01em}
+.authors{font-size:18px;margin:0 0 4px}
+.authors a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
+.affil{color:var(--muted);font-size:15px;margin:0 0 4px}
+.note{color:var(--muted);font-size:13px;margin:0}
+.buttons{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:22px 0 0}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border-radius:999px;background:var(--fg);color:var(--bg);
+  font:500 14.5px var(--sans);text-decoration:none;border:1px solid var(--fg)}
+.btn.ghost{background:transparent;color:var(--fg)}
+.btn[aria-disabled="true"]{opacity:.45;pointer-events:none}
+.btn svg{width:16px;height:16px;fill:currentColor}
+.teaser{margin:30px 0 8px}
+.teaser img{width:100%;border-radius:10px;display:block}
+.tldr{font:400 19px/1.55 var(--serif);text-align:center;margin:18px auto 44px;max-width:780px;color:var(--fg)}
+.tldr b{color:var(--blue);font-weight:600}
+.tldr i{color:var(--red);font-style:normal;font-weight:600}
+section{padding:46px 0;border-top:1px solid var(--line)}
+h2{font:600 26px/1.25 var(--serif);margin:0 0 18px;text-align:center}
+h3{font:600 18px/1.3 var(--sans);margin:28px 0 10px}
+p{margin:0 0 14px}
+.abstract{text-align:justify;hyphens:auto}
+figure{margin:0}
+figure img{width:100%;display:block;border-radius:8px;background:#fff}
+figcaption{color:var(--muted);font-size:14px;margin-top:8px;line-height:1.5}
+.video-main{position:relative}
+.video-main video{width:100%;border-radius:10px;display:block;background:#000}
+.tabs{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:0 0 14px}
+.tab{font:500 14px var(--sans);padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+.tab[aria-selected="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;align-items:start}
+.clip video{width:100%;display:block;border-radius:8px;background:#000;aspect-ratio:16/9;object-fit:cover}
+.clip figcaption{display:flex;justify-content:space-between;align-items:center;color:var(--fg);font-weight:500}
+.tag{font:500 11.5px var(--sans);padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.tag.coupled{color:var(--red);border-color:currentColor}
+.steps{counter-reset:s;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:22px 0 0}
+.steps div{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 16px 12px}
+.steps div::before{counter-increment:s;content:counter(s);display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;
+  background:var(--fg);color:var(--bg);font:600 13px var(--sans);margin-bottom:8px}
+.steps b{display:block;margin-bottom:4px}
+.steps p{font-size:14.5px;color:var(--muted);margin:0}
+table{border-collapse:collapse;width:100%;font-size:15px;font-variant-numeric:tabular-nums}
+th,td{padding:8px 10px;text-align:center;border-bottom:1px solid var(--line)}
+th{font-weight:600}
+td:first-child,th:first-child{text-align:left}
+.table-wrap{overflow-x:auto}
+.stats{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin:6px 0 22px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 18px;text-align:center;min-width:150px}
+.stat b{display:block;font:600 26px/1.1 var(--serif)}
+.stat span{font-size:13px;color:var(--muted)}
+details.prompt{background:var(--card);border:1px solid var(--line);border-radius:10px;margin:10px 0}
+details.prompt summary{cursor:pointer;padding:12px 16px;font-weight:600}
+details.prompt pre{margin:0;padding:0 16px 16px;white-space:pre-wrap;font:12.5px/1.55 var(--mono);color:var(--fg);max-height:420px;overflow:auto}
+pre.bib{background:var(--code);border-radius:10px;padding:16px;font:13px/1.55 var(--mono);overflow-x:auto;margin:0}
+.copy{float:right;font:500 12.5px var(--sans);padding:5px 10px;border-radius:6px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+
+.vtabs{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:0 0 12px}
+.wide-video video{width:100%;display:block;border-radius:10px;background:#000}
+.plan{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
+.plan-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.plan-head b{font:600 16px var(--sans)}
+.plan-nav{display:flex;align-items:center;gap:8px}
+.plan-nav button{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--bg);color:var(--fg);cursor:pointer;font-size:14px}
+.plan-count{font:500 14px var(--mono);color:var(--muted);min-width:56px;text-align:center}
+.plans{display:grid;gap:16px}
+.plan.blue{border-left:4px solid var(--blue)}.plan.red{border-left:4px solid var(--red)}
+.lanes{display:grid;gap:8px;margin-bottom:14px}
+.lane{display:grid;grid-template-columns:52px minmax(0,1fr);gap:8px;align-items:center}
+.lane-name{font:600 14px var(--sans)}.lane-name.blue{color:var(--blue)}.lane-name.red{color:var(--red)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font:500 12.5px var(--mono);padding:6px 10px;border-radius:7px;border:1.5px solid var(--line);background:var(--bg);color:var(--fg);cursor:pointer}
+.chip.blue{border-color:var(--blue)}.chip.red{border-color:var(--red)}.chip.both{border-color:var(--fg);border-style:dashed}
+.chip[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.chip.blue[aria-pressed="true"]{background:var(--blue);border-color:var(--blue);color:#fff}.chip.red[aria-pressed="true"]{background:var(--red);border-color:var(--red);color:#fff}
+.plan-sel{border-left:4px solid var(--muted);padding:8px 12px;background:var(--bg);border-radius:0 8px 8px 0;margin-bottom:12px}
+.plan-sel.blue{border-color:var(--blue)}.plan-sel.red{border-color:var(--red)}.plan-sel.both{border-color:var(--fg)}
+.plan-sel code{font:600 13.5px var(--mono)}.plan-sel p{margin:4px 0 0;font-size:14.5px;color:var(--muted)}
+.plan-pair{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:10px;align-items:center}
+.plan-pair img{width:100%;border-radius:8px;display:block}
+.plan-pair figcaption{text-align:center;font:500 13px var(--mono)}
+.plan-arrow{font-size:22px;color:var(--muted)}
+.plan-steps{display:grid;gap:8px;margin-top:14px}
+.plan-step{border-left:4px solid var(--muted);padding:6px 12px;background:var(--bg);border-radius:0 8px 8px 0}
+.plan-step.blue{border-color:var(--blue)}.plan-step.red{border-color:var(--red)}.plan-step.both{border-color:var(--fg)}
+.plan-step code{font:500 13px var(--mono)}
+.plan-step p{margin:2px 0 0;font-size:14.5px;color:var(--muted)}
+.plan-dep{margin-top:12px;font-size:14px;color:var(--muted)}
+.soon{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.soon div{border:1.5px dashed var(--line);border-radius:12px;padding:22px;text-align:center;background:var(--card)}
+.soon b{display:block;font:600 17px var(--sans);margin-bottom:6px}
+.soon p{color:var(--muted);font-size:14.5px;margin:0}
+.soon .badge{display:inline-block;margin-top:12px;font:500 12px var(--sans);padding:3px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+@media (max-width:760px){.soon{grid-template-columns:1fr}.plan-pair{grid-template-columns:1fr}.plan-arrow{display:none}}
+footer{padding:30px 0 50px;color:var(--muted);font-size:13px;text-align:center;border-top:1px solid var(--line)}
+@media (max-width:760px){.grid3,.steps{grid-template-columns:repeat(2,minmax(0,1fr))}.grid2{grid-template-columns:1fr}}
+@media (max-width:460px){.grid3,.steps{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>Cooperative Task and Motion Planning for Quadruped Robots with Large Language Models</h1>
+  <p class="authors">Woojin Kim<sup>1</sup> &nbsp;and&nbsp; Jemin Hwangbo<sup>1,*</sup></p>
+  <p class="affil"><sup>1</sup>Department of Mechanical Engineering, KAIST</p>
+  <p class="note"><sup>*</sup>Corresponding author</p>
+  <div class="buttons">
+    <!-- TODO: replace href with the arXiv link and remove aria-disabled -->
+    <a class="btn" href="#" aria-disabled="true"><svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6zm8 1.5V8h4.5z"/></svg>Paper (arXiv, soon)</a>
+    <!-- TODO: code repository link -->
+    <a class="btn ghost" href="#" aria-disabled="true"><svg viewBox="0 0 24 24"><path d="M12 .5a11.5 11.5 0 0 0-3.6 22.4c.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.6.2 2.8.1 3.1.8.8 1.2 1.9 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.2c0 .3.2.7.8.6A11.5 11.5 0 0 0 12 .5z"/></svg>Code (soon)</a>
+    <a class="btn ghost" href="#prompts">Prompts</a>
+    <a class="btn ghost" href="#bibtex">BibTeX</a>
+  </div>
+</header>
+
+<figure class="teaser">
+  <img src="project_page/static/images/fig_env1_composite.png" alt="Two quadruped robots on Course 1: the blue robot climbs onto the upper platform from the red robot's back, then both robots reach their goals.">
+</figure>
+<p class="tldr">An LLM task planner <b>invents the motions</b> a task needs, such as <i>climbing onto a partner's back</i>, and a motion generator turns them into trajectories for two quadrupeds.</p>
+
+<section id="abstract">
+  <div class="narrow">
+    <h2>Abstract</h2>
+    <p class="abstract">Some environments cannot be traversed by a single quadruped robot, for example a ledge that one robot can climb only from its partner's back or a gap that must be bridged with boxes. Solving them requires cooperative task and motion planning (TAMP). Previous works are limited to the motions of a single robot or only select actions from a predefined set of skills. We propose a framework with two parts: task planning that invents motions not defined in advance, and motion generation that realizes the invented motions. Task planning divides the trajectory of the whole task into steps and fixes the robot poses at the step boundaries. Motion generation produces keyframes that describe the motion of each step and turns them into a continuous trajectory through kinematic synthesis. It can also generate motions in which the two robots support each other through body contact. Because the boundary poses are fixed, the steps are generated in parallel. Code-based modules check every plan and motion and return failures to the large language model (LLM) for correction. The whole trajectory is then refined by trajectory optimization to satisfy the dynamics. With two RAIBO2 quadrupeds, our framework succeeded in all 30 trials on three cooperative courses. Compared with generating dense trajectories directly, it needed 1.6× less generation time and 1.7× lower cost.</p>
+  </div>
+</section>
+
+<section id="results-video">
+  <h2>Whole-Course Results</h2>
+  <div class="narrow">
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" data-v="course1">Course 1 · climb on partner</button>
+      <button class="tab" role="tab" aria-selected="false" data-v="course2">Course 2 · cross over partner</button>
+      <button class="tab" role="tab" aria-selected="false" data-v="course3">Course 3 · push boxes</button>
+    </div>
+    <div class="video-main"><video id="course-video" src="project_page/static/videos/course1.mp4" autoplay muted loop playsinline controls preload="metadata"></video></div>
+    <p class="note" style="text-align:center;margin-top:8px">Generated kinematic references, played at 2× speed.</p>
+  </div>
+  <div class="stats">
+    <div class="stat"><b>30 / 30</b><span>kinematic success</span></div>
+    <div class="stat"><b>30 / 30</b><span>TO convergence</span></div>
+    <div class="stat"><b>≈ 15 min</b><span>generation per course</span></div>
+  </div>
+  <div class="table-wrap narrow">
+    <table>
+      <thead><tr><th>Course</th><th>Kinematic success</th><th>TO convergence</th><th>Generation time [min]</th><th>Cost [USD]</th><th>Trajectory length [s]</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>10/10</td><td>10/10</td><td>15.3</td><td>1.68</td><td>52.9</td></tr>
+        <tr><td>2</td><td>10/10</td><td>10/10</td><td>14.0</td><td>1.72</td><td>58.0</td></tr>
+        <tr><td>3</td><td>10/10</td><td>10/10</td><td>13.5</td><td>2.46</td><td>70.1</td></tr>
+      </tbody>
+    </table>
+    <p class="note" style="margin-top:8px">10 trials per course. Generation time excludes the trajectory optimization (TO).</p>
+  </div>
+</section>
+
+<section id="method">
+  <h2>Method</h2>
+  <figure><img src="project_page/static/images/fig_overview.png" alt="Pipeline: task planning, parallel step-level motion generation, and trajectory integration."></figure>
+  <div class="steps">
+    <div><b>Task planning</b><p>An LLM task planner splits the task into <em>solo</em> steps of one robot and <em>coupled</em> steps of both robots, and fixes the robot poses at the step boundaries. It is not limited to a predefined skill set.</p></div>
+    <div><b>Motion generation</b><p>For every step, in parallel, an LLM motion generator outputs a walking route or a few keyframes. Code-based modules interpolate them, optimize failing intervals, and check the result every 10 ms.</p></div>
+    <div><b>Trajectory integration</b><p>Step trajectories are composed on a global timeline that synchronizes the robots only where the plan requires it, and refined by trajectory optimization.</p></div>
+  </div>
+  <h3>Why split solo and coupled steps?</h3>
+  <figure><img src="project_page/static/images/fig_schedule.png" alt="The same steps placed as solo and coupled steps versus all coupled."><figcaption>With the same steps, splitting the task into solo and coupled steps lets each robot keep moving, while making every step coupled forces the robot with the shorter motion to wait at every step boundary.</figcaption></figure>
+  <h3>Why keyframes?</h3>
+  <div class="narrow" style="max-width:560px"><figure><img src="project_page/static/images/fig_kf_vs_full.png" alt="Full trajectories need more time and cost than keyframes on all six steps."><figcaption>Writing only keyframes instead of dense trajectories reaches the same success with 1.6× less generation time and 1.7× lower cost. In parentheses: mean time and cost per step with keyframes.</figcaption></figure></div>
+</section>
+
+
+<section id="inside">
+  <h2>Inside the Framework</h2>
+
+  <h3>A plan written by the task planner</h3>
+  <p class="narrow" style="max-width:none;color:var(--muted)">The task planner of Course&nbsp;1 (trial 3, the run shown above) invented these steps; nothing was chosen from a skill library. Each robot has its own sequence of solo steps, and the two sequences meet at the coupled step. Step through each robot's plan to see the start and end poses of each step (solo steps show only that robot) and the planner's own description.</p>
+  <div class="plans">
+    <div class="plan blue" data-robot="blue" tabindex="0" aria-label="Blue robot plan">
+      <div class="plan-head"><b class="lane-name blue">Blue robot</b>
+        <div class="plan-nav"><button type="button" class="p-prev" aria-label="Previous step">◀</button><span class="plan-count p-count"></span><button type="button" class="p-next" aria-label="Next step">▶</button></div>
+      </div>
+      <div class="plan-sel p-sel"></div>
+      <div class="plan-pair">
+        <figure><img class="p-from" alt=""><figcaption class="p-from-cap"></figcaption></figure>
+        <span class="plan-arrow" aria-hidden="true">→</span>
+        <figure><img class="p-to" alt=""><figcaption class="p-to-cap"></figcaption></figure>
+      </div>
+      <div class="plan-dep p-dep"></div>
+    </div>
+    <div class="plan red" data-robot="red" tabindex="0" aria-label="Red robot plan">
+      <div class="plan-head"><b class="lane-name red">Red robot</b>
+        <div class="plan-nav"><button type="button" class="p-prev" aria-label="Previous step">◀</button><span class="plan-count p-count"></span><button type="button" class="p-next" aria-label="Next step">▶</button></div>
+      </div>
+      <div class="plan-sel p-sel"></div>
+      <div class="plan-pair">
+        <figure><img class="p-from" alt=""><figcaption class="p-from-cap"></figcaption></figure>
+        <span class="plan-arrow" aria-hidden="true">→</span>
+        <figure><img class="p-to" alt=""><figcaption class="p-to-cap"></figcaption></figure>
+      </div>
+      <div class="plan-dep p-dep"></div>
+    </div>
+  </div>
+
+  <h3>From keyframes to motion</h3>
+  <p style="color:var(--muted)">Left: the keyframes written by the LLM motion generator, each shown until the next one. Right: the trajectory obtained from them by kinematic synthesis, on the same clock.</p>
+  <div class="vtabs" role="tablist" data-target="kf-video">
+    <button class="tab" role="tab" aria-selected="true" data-src="project_page/static/videos/keyframes_coop_ascent.mp4">Cooperative ascent</button>
+    <button class="tab" role="tab" aria-selected="false" data-src="project_page/static/videos/keyframes_platform_ascent.mp4">Platform ascent</button>
+    <button class="tab" role="tab" aria-selected="false" data-src="project_page/static/videos/keyframes_pillar_crossing.mp4">Pillar crossing</button>
+  </div>
+  <div class="wide-video"><video id="kf-video" src="project_page/static/videos/keyframes_coop_ascent.mp4" autoplay muted loop playsinline controls preload="metadata"></video></div>
+
+</section>
+
+<section id="comparisons">
+  <h2>Comparisons</h2>
+  <div class="soon">
+    <!-- TODO: All-coupled side-by-side video (Q3) -->
+    <div><b>All-coupled: waiting at every step</b><p>The same course planned with every step coupled, played next to ours: the robot with the shorter motion keeps waiting for its partner.</p><span class="badge">coming soon</span></div>
+    <!-- TODO: Barebone failure reel (Q2) -->
+    <div><b>Barebone: one LLM call</b><p>Trajectories written in a single LLM call: many pass the kinematic checks but contain jump-like motions that ignore the dynamics.</p><span class="badge">coming soon</span></div>
+  </div>
+</section>
+
+<section id="steps">
+  <h2>Generated Motions</h2>
+  <p class="narrow" style="text-align:center;color:var(--muted)">The six steps used in the step-level comparison, generated from keyframes (1.5× speed). Coupled steps are generated for both robots together.</p>
+  <div class="grid3">
+<figure class="clip"><video src="project_page/static/videos/step_coop_ascent.mp4" autoplay muted loop playsinline preload="metadata"></video><figcaption>Cooperative ascent <span class="tag coupled">coupled</span></figcaption></figure>
+<figure class="clip"><video src="project_page/static/videos/step_coop_transfer.mp4" autoplay muted loop playsinline preload="metadata"></video><figcaption>Cooperative transfer <span class="tag coupled">coupled</span></figcaption></figure>
+<figure class="clip"><video src="project_page/static/videos/step_platform_ascent.mp4" autoplay muted loop playsinline preload="metadata"></video><figcaption>Platform ascent <span class="tag solo">solo</span></figcaption></figure>
+<figure class="clip"><video src="project_page/static/videos/step_pillar_crossing.mp4" autoplay muted loop playsinline preload="metadata"></video><figcaption>Pillar crossing <span class="tag solo">solo</span></figcaption></figure>
+<figure class="clip"><video src="project_page/static/videos/step_box_push.mp4" autoplay muted loop playsinline preload="metadata"></video><figcaption>Box push <span class="tag solo">solo</span></figcaption></figure>
+<figure class="clip"><video src="project_page/static/videos/step_maze_walk.mp4" autoplay muted loop playsinline preload="metadata"></video><figcaption>Maze walk <span class="tag solo">solo</span></figcaption></figure>
+  </div>
+</section>
+
+<section id="prompts">
+  <div class="narrow">
+    <h2>Prompts</h2>
+    <p>The full prompts given to the LLM modules. The task planner and motion generator also receive the environment, the robot models, and renderings of the scene.</p>
+<details class="prompt"><summary>Task planner</summary><pre># Cooperative robot planning
+
+## Task
+- Generate robot-local skill sequences, necessary dependencies, and step boundary poses.
+- Bring each robot to its assigned goal; no arrival order is required.
+- Plan activities and dependencies before choosing step boundary poses.
+- Invent solo or cooperative skills as needed, even if they are not yet implemented.
+
+## Inputs
+- The environment JSON defines the robots, obstacles, movable objects and task.
+- Object centers follow zero_center_world + axis_world * position_m.
+- Rendered images show the initial scene and candidate keyframes.
+- Use JSON for geometry and task rules; visual markers are not obstacles.
+- Use only supplied inputs and this experiment&#x27;s conversation. Do not access other runs, source environments, repository history or provenance files.
+- Optional calculation code may run only in temp/. Do not invoke other models or install packages.
+
+## Constraints
+- Each robot&#x27;s first step starts at its supplied initial pose; subsequent starts match its preceding step ends.
+- Do not invent hardware, task restrictions or mandatory cooperation.
+- At their final step endpoints, both robots must have all four feet supported inside their own goal at its height.
+- Collision-free boundary poses do not establish a feasible transition. Trace each proposed route through actual connected free space or traversable support surfaces, checking the full extent of walls and barriers and the robot&#x27;s swept body and limb envelope. Respect task-specific non-traversable surfaces throughout the transition.
+- Before a cooperative step, mentally trace the approach, alignment, contact transfers, and exit. Choose start poses that both robots can reach and that provide sufficient clearance and stable support throughout the motion.
+- Do not assume that naming a new skill makes a transition feasible. For each proposed climb, crossing or support transfer, identify the intermediate support surfaces and explain how the robot can reach and clear them using its supplied geometry. Do not defer an unresolved geometric contradiction to motion generation.
+- Move passive objects only through pushing contact within travel limits; check collisions during movement and access before and after it.
+- Never move an object while the other robot uses it as support.
+- A yielding or waiting pose must keep the robot&#x27;s entire geometry clear of the partner&#x27;s route and the movable object&#x27;s complete swept volume, with positive clearance. Checking only the feet or the object&#x27;s initial and final positions is insufficient.
+- Boundary poses use nominal joints and zero roll/pitch, with all four feet supported on horizontal surfaces at one height.
+- Choose step boundaries that permit both arrival from the preceding activity and departure into the next activity. After crossing an obstacle, clear the entire robot before restoring nominal standing or starting ordinary walking; merge adjacent phases when no suitable nominal boundary exists.
+
+## Preferences
+- Prefer routes with ample clearance, stable support, and straightforward approach and alignment.
+- Prefer connected terrain routes, ramps and intermediate supports over large direct climbs or tightly constrained obstacle crossings when they offer a geometrically clearer transition. Compare alternatives before committing to a demanding maneuver.
+- Among similarly feasible routes, prefer less travel and waiting.
+- Among feasible plans, prefer the shortest estimated overall task completion time, rather than simply fewer steps or less total travel. Compare alternative robot assignments and action orders, including their travel, manipulation and waiting costs along dependency chains.
+- Do not move an access-enabling object early by default. Compare early preparation by one robot with moving it when another robot reaches the required contact side. Prefer the assignment that reduces overall completion time while preserving clearance and independent progress.
+- Apply dependencies only to the motion that requires clearance. Perform safe preparation beforehand, and finish waiting poses aligned for the next motion when feasible.
+- When yielding or enabling access, end at the first valid nominal pose where the entire robot, including its legs and feet, has sufficient clearance from the paths of the partner and moving objects. Separate remaining travel. Release the dependency there only if access remains clear.
+- Before adding waits or detours around a shared passage, compare both traversal orders and prefer the one that avoids blocking subsequent approaches.
+- Absorb very short repositioning into an adjacent step by adjusting its boundary when feasible, including ending directly at the goal. Preserve necessary dependency, cooperative, and distinct-skill boundaries.
+- Prefer contact-based motions with continuous support and low impact over highly dynamic motion.
+- For ascents or descents of about 0.5 m or more, consider partner support for stability and lower impact.
+- When crossing a partner&#x27;s back, prefer sideways alignment if it improves support width. Choose either sideways heading to minimize travel and turning.
+
+## Output contract
+- Read inputs/output_schema.json and write the matching JSON result to temp/model_output.json, relative to the workspace root. Use English and exact supplied IDs. Do not repeat the JSON in the final chat message.
+- Define each robot&#x27;s step sequence. Solo steps belong to one robot; both robots reference the same cooperative step. Use cooperative for coupled participation during an activity.
+- Add only additional finish-to-start dependencies. A robot that finishes a predecessor may continue its own sequence.
+- Separate ordinary walking or turning from non-locomotion skills whenever a valid nominal boundary allows it. Keep movements essential to the skill&#x27;s contact transitions within that skill. Use unique IDs for activities with different conditions. locomotion means ordinary walking/turning on connected horizontal support.
+- Declare required object states and changes. Order changes so they do not occur while another step requires that state.
+- Supply start and end {x, y, yaw} for each solo step and each cooperative robot role.
+- Resolve shared-space or object conflicts through routes or dependencies. Choose waiting poses that do not obstruct movement.
+- Python builds preview pairs from ready steps and propagates robot/object states into full-scene keyframes. These are review examples, not execution-time barriers.
+
+## Feedback protocol
+- Python performs validation and rendering; propose or review plans rather than invoking these tools.
+- Initially or after changes, write action=propose to that file with the complete plan with step boundaries.
+- Review the latest feedback and relevant images. Recheck transition routes beyond the host&#x27;s boundary checks.
+- Correction images show only failed keyframes. After a repair passes validation, new attachments are limited to those previously failed keyframes; unchanged views are not repeated. Other keyframes remain checked and saved, and a valid draft without failures may have no new images.
+- Accept only the latest host-valid candidate when no changes remain by writing this to temp/model_output.json: {&quot;action&quot;:&quot;accept&quot;,&quot;plan&quot;:null}.
+- If supplied facts establish infeasibility, write action=propose to that file with plan.status=infeasible. Explain why in plan.summary; return empty robot_plans, solo_steps, cooperative_steps and dependencies.
+</pre></details>
+<details class="prompt"><summary>Motion generator</summary><pre># Keyframe and locomotion generation
+
+## Task
+- Generate a walking route or keyframe sequence from the supplied initial state to the goal state, following the step&#x27;s intended activity and contact requirements.
+
+## Inputs
+- inputs/motion_info.json defines the activity, active_robots, robot_mapping, initial/goal states and reference_speeds, with gc_order for interpreting the initial and goal GC values.
+- inputs/environment.json defines environment geometry, movable objects, contact_tolerances_m and cooperative robot_contact policy.
+- inputs/keyframe_format.json defines the keyframe or walking-route representation inside the submitted JSON file&#x27;s motion field.
+- inputs/rsc/robot_summary.md provides robot dimensions, joint transforms/limits, collision shapes and nominal foot positions. Refer to this summary instead of the full URDFs for robot information. URDF and mesh files are tool assets.
+- Initial-call attachments show the initial state first and the goal state second, with only participating robots visible.
+&lt;!-- robot-api:start --&gt;
+- inputs/robot_api.py provides FK/IK, coordinate and anchor conversions, batch IK and collision checks.
+- inputs/robot_api_interface.md describes API usage. Refer to this document instead of reading or copying the implementation source, and call the public functions.
+&lt;!-- robot-api:end --&gt;
+
+## Framework rules
+- Use only this workspace and session. Keep calculation code and intermediate results under temp/; never modify inputs or trusted tools.
+- Print only concise diagnostic information needed for the next decision. Save complete model information and detailed per-frame results to temp/ files.
+- Use locomotion only when a planar body route is sufficient to specify the motion. Along the entire route, the robot must be able to use its default walking gait on continuous, sufficiently wide horizontal support, while keeping body height, roll and pitch constant. The body, legs and ordinary foot swings must have adequate clearance. There must be no object changes or cooperative contacts.
+- Use keyframes when feasibility depends on choosing particular footholds, placing feet on separate or narrow supports, crossing gaps or obstacles, or changing body posture to obtain clearance. Equal initial and goal heights are not sufficient for locomotion.
+- Avoiding obstacles by routing around them may use locomotion. Traversing them through deliberate body or foot maneuvers requires keyframes. When uncertain, choose keyframes. Do not mix modes within a step.
+- The submitted mode must match the representation actually constructed and checked. If you constructed a keyframe sequence, return that sequence as mode=keyframes; do not replace it with body-only locomotion endpoints to shorten the response.
+- In locomotion, keep base height constant and roll/pitch zero. Place the xyz/yaw waypoints needed to describe the route and maintain collision clearance.
+- In keyframes, envision the complete motion and foot-transfer sequence. Record a keyframe whenever one foot or one diagonal pair finishes landing. Add intermediate states needed to represent body, supporting-robot or object motion without foot transfers.
+- Each participating robot has all four feet on valid supports at each keyframe. Supports may differ between feet; free and self-support are invalid. A landed state does not imply a body stop or a return to a symmetric nominal pose.
+- Place intermediate landing states so that foot transfers between consecutive keyframes, including the initial and goal states, obey the shared support constraints. Do not omit transfer completions or output airborne swing midpoints.
+- Candidate searches and numerical optimization are allowed for keyframe poses only; internal checks do not replace final host validation.
+- Consider the complete motion when selecting keyframes, but limit numerical calculations and checks to the keyframe poses. The host generates, checks and repairs trajectories between keyframes.
+&lt;!-- robot-api:start --&gt;
+- Prefer the provided check_collisions for single-pose collision queries. Check the requested poses while revising. Internal checks do not replace final host validation.
+- Reuse loaded contexts and prefer batch IK for repeated solves. Use IK failure_details and joint-change diagnostics when useful.
+&lt;!-- robot-api:end --&gt;
+
+&lt;!-- motion-guidelines --&gt;
+
+## Output contract
+- Write temp/model_output.json with only a motion field containing the representation matching inputs/keyframe_format.json. Include only the specified fields. Submit the numeric data file, not source code or reconstruction instructions; do not repeat its contents in the final chat message. You may use calculation code under temp/ to construct and check the keyframe poses before writing the computed numeric values and identifiers to the file. The host determines timing, durations and sampling. Do not add timing fields or numerically construct transitions.
+- Inside motion, for keyframes write {&quot;mode&quot;:&quot;keyframes&quot;,&quot;keyframes&quot;:[...]}. Each keyframe contains robots and object_states. Include exactly active_robots; cooperative robots share each keyframe index. Each robot contains base_position_xyz, base_orientation_rpy and feet with LF/RF/LH/RH. Each foot contains contact_point_xyz and support.
+- Supply world-frame surface contact points rather than foot sphere centers. Body positions are world-frame xyz and orientations are roll/pitch/yaw; units are metres and radians.
+- Support IDs are ground, supplied static/movable object names or another active robot alias. Avoid unnecessary rounding that would exceed the supplied contact tolerances.
+- Each keyframe&#x27;s object_states includes exactly the objects listed in this step&#x27;s object_changes, with position_m inside their travel limits; use {} when none are listed. Other objects retain their supplied states.
+- Output only intermediate keyframes. The host inserts the exact initial and goal states; the same foot-transfer rules apply to both boundaries. Do not duplicate the goal when it represents the final landing. Return an empty list only when no intermediate states are needed.
+- Inside motion, for locomotion write {&quot;mode&quot;:&quot;locomotion&quot;,&quot;robot&quot;:&quot;R1&quot;,&quot;keypoints&quot;:[{&quot;base_position_xyz&quot;:[x,y,z],&quot;yaw&quot;:yaw},...]}. Use the supplied active robot alias and provide at least two points including the exact initial and goal body positions and yaw. Do not add extra fields.
+
+## Feedback protocol
+- On the initial call, write the full intermediate keyframe sequence or walking route to temp/model_output.json matching the supplied format.
+- After each call, the host reads the submitted JSON file. For keyframes, it validates and renders the supplied poses. For locomotion, it checks and renders representative standing poses at the route points, using the initial joint posture at intermediate points and the exact supplied initial/goal poses at the endpoints. It checks collisions, joint limits, foot support and support-edge margin without synthesizing gait or checking transitions.
+- When this session resumes, review the supplied diagnostics and images and revise the requested representation. Keep input conditions and validation tolerances unchanged.
+- For keyframe revisions, the host provides all failed intermediate keyframes together with their errors, images and immediate neighboring states. IK-failed images show diagnostic seed joints, not achieved foot targets.
+- When pose feedback specifies replacement_indices, recreate temp/model_output.json with only the replacement keyframes or route points in replacement_indices order inside the motion field, matching the supplied revision schema. Keep the keyframe count, all unrequested states and the exact initial/goal conditions unchanged.
+- For pose-only keyframe patches, preserve the foot-transfer sequence and support-local anchors of feet not targeted for correction, while adjusting the body poses and foot placements of failed states. Coordinate adjacent replacements and both robots in cooperative frames so that the merged sequence satisfies the Framework rules. The host merges replacements and independently rechecks the full sequence.
+- For pose-only locomotion patches, adjust only the requested route points while preserving the mode, robot alias and all other points. The host merges replacements and rechecks all route poses.
+- Passing keyframe or route-pose validation establishes the validity of the supplied poses only. The host then synthesizes the continuous trajectory, applies geometric repair where applicable and validates the final motion.
+- If trajectory synthesis or validation fails, the host provides diagnostics and available images and requests a complete replacement sequence or route using the original file format. You may change intermediate states and their count to repair the containing intervals and maintain continuity with neighboring intervals. Keep the exact initial/goal states fixed. Limit your calculations to poses; transition generation and checking remain the host&#x27;s responsibility.
+- Trajectory feedback images sample failure intervals padded by 1 s every 0.25 s, plus initial/final and peak-error frames. Use feedback.images for attachment order and whole-motion timestamps. A synthesis failure without a trajectory may provide textual diagnostics only.
+- The host finishes when final trajectory validation passes. Each session permits one draft and at most two corrections; format, pose and trajectory failures share this correction budget. If the correction budget is exhausted, the run fails without a fresh-session retry. Stop after writing the requested JSON file; no acceptance response is needed.
+</pre></details>
+<details class="prompt"><summary>Motion guidelines (shared)</summary><pre>## Constraints
+- Generate motion only for the participating robots and satisfy the supplied initial state and goal requirements. Preserve explicitly fixed boundary poses, required contacts and movable-object endpoints when specified.
+- Maintain support from at least three feet, or from a diagonal pair: LF–RH or RF–LH. Relocate at most one foot or one diagonal pair per robot at a time, keeping the remaining feet anchored in their support frames. Moving supports may carry those anchors through the world.
+- Keep every robot configuration within the supplied joint limits. Body poses and foot placements must be jointly reachable throughout the motion, including transitions between contact states.
+- Avoid collisions between robots, the environment and movable objects. Intended contact must not become interpenetration beyond the supplied geometric tolerances; do not use tolerances as additional free space.
+- Do not touch or use walls as support with any robot link, including feet. Follow the planned route around walls rather than climbing over them. Wall contact is a validation failure even without penetration.
+- Respect the supplied contact tolerances and permitted contact regions. When using another robot as a support, follow any specified contact frame, locations, placement tolerance and contact-count restrictions.
+- For each supporting foot on a finite surface, maintain at least 0.01 m between the foot sphere&#x27;s projected outer edge and the support boundary, measured in the support-local plane. Account for the foot radius when choosing contact locations.
+- Keep movable objects within their supplied travel limits and maintain physical contact while pushing them.
+
+## Preferences
+### Continuous progression
+- Design the overall body progression first, then coordinate foot transfers with it. Advance the body concurrently with foot transfers and preserve smooth body position, orientation and velocity across contact transitions.
+- Do not force a whole-body stop at every landing or repeatedly separate foot transfers from body-only shifts. Once support is established, begin the next transfer promptly; add settling time only when needed.
+
+### Foot transfers and stance
+- Prefer alternating diagonal transfers when support, reachability and collision clearance permit. Otherwise move one foot at a time while preserving the required support.
+- During sustained progression, alternate the leading diagonal pair when terrain permits. Avoid repeatedly advancing one pair while the other only catches up to restore a symmetric stance. Preserve staggered footholds across successive landings.
+- Do not repeatedly return to a nominal or symmetrically aligned pose between transfers. Use alignment or recovery poses only when required for clearance, contact changes, cooperative readiness or the final pose.
+- Maintain a well-spread fore–aft stance around the center of mass. Sequence foothold advances according to the direction of travel without crowding the fore and hind feet; adjust the body path or use an intermediate foothold when space or reachability is limited.
+
+### Foot paths
+- Use continuous rounded swing paths with enough terrain and obstacle clearance to avoid dragging. Avoid separate lift–translate–lower phases, unnecessary detours and apex holds unless clearance requires them.
+- Keep touchdown gentle without stopping the whole body. Avoid abrupt changes in foot motion or robot configuration.
+
+### Body posture
+- Avoid excessive lateral sway and keep torso roll modest. Use brief, small tilts when needed for clearance or support transfer, then return toward level. Prefer adjusting footholds, foot paths or body height over large torso rolls.
+
+### Pace and efficiency
+- Use the supplied reference speeds as the intended default pace for body translation and rotation. Maintain a natural pace consistent with actual travel distance, accumulated rotation and necessary support transfers.
+- Slow down locally only while alignment, contact transfer or clearance requires it, then resume the normal pace. Avoid rushing an entire action or slowing the entire motion because one maneuver is delicate.
+- Give each foot transfer enough time for a rounded clearance path and gentle touchdown. Avoid abrupt changes in joint angles or foot positions.
+- Avoid excessive short steps, unnecessary waits and long durations for small movements.
+
+### Object contact and cooperation
+- If assistance from another participating robot is available and an action or obstacle cannot be handled alone while satisfying support, reachability and collision constraints, use coordinated cooperative motion rather than forcing an infeasible solo motion. Choose complementary roles and contact interactions appropriate to the task and geometry, preserving any roles and contact conditions already specified.
+- When using a partner&#x27;s back as a stepping surface, align the supporting robot sideways, with its torso&#x27;s fore–aft axis approximately perpendicular to the supported robot&#x27;s direction of ascent or crossing. Choose either sideways heading according to clearance and required turning. Complete this alignment before the first foot lands on its back, and maintain the supporting heading while those contacts remain established.
+- For box pushing, prefer shoulder contact with walking feet when feasible. Lower contact toward the box&#x27;s center-of-mass height and shift the body slightly forward relative to its feet rather than pitching forward. Preserve foot clearance and pushing contact.
+- A robot providing support should maintain a stable supporting pose and contact surface. Move it when needed for the cooperative task, while coordinating both robots to avoid unnecessary disturbance of established support contacts.
+- Apply these preferences within the constraints above. Terrain and required contacts may justify sequential transfers, aligned poses, brief pauses or local slowing; they do not justify violating support, reachability or collision constraints.
+</pre></details>
+  </div>
+</section>
+
+<section id="bibtex">
+  <div class="narrow">
+    <h2>BibTeX</h2>
+    <button class="copy" type="button" id="copy-bib">Copy</button>
+<pre class="bib" id="bib">@article{kim2026cooperative,
+  title   = {Cooperative Task and Motion Planning for Quadruped Robots with Large Language Models},
+  author  = {Kim, Woojin and Hwangbo, Jemin},
+  journal = {arXiv preprint},
+  year    = {2026}
+}</pre>
+  </div>
+</section>
+
+<footer>Robotics and Artificial Intelligence Lab, KAIST</footer>
+</div>
+<script>
+document.querySelectorAll('.tab').forEach(function(b){
+  b.addEventListener('click',function(){
+    document.querySelectorAll('.tab').forEach(function(x){x.setAttribute('aria-selected','false')});
+    b.setAttribute('aria-selected','true');
+    var v=document.getElementById('course-video'); v.src='project_page/static/videos/'+b.dataset.v+'.mp4'; v.play().catch(function(){});
+  });
+});
+
+document.querySelectorAll('.vtabs').forEach(function(g){
+  var v=document.getElementById(g.dataset.target);
+  g.querySelectorAll('.tab').forEach(function(b){
+    b.addEventListener('click',function(){
+      g.querySelectorAll('.tab').forEach(function(x){x.setAttribute('aria-selected','false')});
+      b.setAttribute('aria-selected','true'); v.src=b.dataset.src; v.play().catch(function(){});
+    });
+  });
+});
+(function(){
+  var PLAN={
+ "lanes": {
+  "blue": [
+   "blue_exit",
+   "blue_mount_low",
+   "supported_upper_transfer",
+   "blue_under_panel"
+  ],
+  "red": [
+   "red_exit",
+   "red_mount_low",
+   "red_stage_boost",
+   "supported_upper_transfer",
+   "red_to_stairs",
+   "red_stairs",
+   "red_align_beam",
+   "red_beam_cross"
+  ]
+ },
+ "steps": {
+  "red_exit": {
+   "id": "red_exit",
+   "kind": "solo",
+   "robot": "red",
+   "description": "Exit the bay first and approach the west edge of obj_007.",
+   "start": "red_exit_start.jpg",
+   "end": "red_exit_end.jpg"
+  },
+  "red_mount_low": {
+   "id": "red_mount_low",
+   "kind": "solo",
+   "robot": "red",
+   "description": "Climb the 0.4 m west ledge of obj_007.",
+   "start": "red_mount_low_start.jpg",
+   "end": "red_mount_low_end.jpg"
+  },
+  "red_stage_boost": {
+   "id": "red_stage_boost",
+   "kind": "solo",
+   "robot": "red",
+   "description": "Reach the transverse support position beside the tall platform.",
+   "start": "red_stage_boost_start.jpg",
+   "end": "red_stage_boost_end.jpg"
+  },
+  "blue_exit": {
+   "id": "blue_exit",
+   "kind": "solo",
+   "robot": "blue",
+   "description": "Exit the cleared bay and approach obj_007.",
+   "start": "blue_exit_start.jpg",
+   "end": "blue_exit_end.jpg"
+  },
+  "blue_mount_low": {
+   "id": "blue_mount_low",
+   "kind": "solo",
+   "robot": "blue",
+   "description": "Climb onto obj_007 and settle at the boost approach.",
+   "start": "blue_mount_low_start.jpg",
+   "end": "blue_mount_low_end.jpg"
+  },
+  "blue_under_panel": {
+   "id": "blue_under_panel",
+   "kind": "solo",
+   "robot": "blue",
+   "description": "Crouch, crawl beneath obj_017, and stand directly inside the blue goal.",
+   "start": "blue_under_panel_start.jpg",
+   "end": "blue_under_panel_end.jpg"
+  },
+  "red_to_stairs": {
+   "id": "red_to_stairs",
+   "kind": "solo",
+   "robot": "red",
+   "description": "Sidestep west to the centered stair approach.",
+   "start": "red_to_stairs_start.jpg",
+   "end": "red_to_stairs_end.jpg"
+  },
+  "red_stairs": {
+   "id": "red_stairs",
+   "kind": "solo",
+   "robot": "red",
+   "description": "Ascend the connected 0.15 m risers to obj_004.",
+   "start": "red_stairs_start.jpg",
+   "end": "red_stairs_end.jpg"
+  },
+  "red_align_beam": {
+   "id": "red_align_beam",
+   "kind": "solo",
+   "robot": "red",
+   "description": "Turn east on the upper staging platform.",
+   "start": "red_align_beam_start.jpg",
+   "end": "red_align_beam_end.jpg"
+  },
+  "red_beam_cross": {
+   "id": "red_beam_cross",
+   "kind": "solo",
+   "robot": "red",
+   "description": "Narrow the stance, cross obj_010, and spread into the red goal.",
+   "start": "red_beam_cross_start.jpg",
+   "end": "red_beam_cross_end.jpg"
+  },
+  "supported_upper_transfer": {
+   "id": "supported_upper_transfer",
+   "kind": "coupled",
+   "robot": "both",
+   "description": "Red provides an intermediate back support while blue climbs from obj_007 to obj_015.",
+   "start": "supported_upper_transfer_start.jpg",
+   "end": "supported_upper_transfer_end.jpg"
+  }
+ },
+ "dependencies": [
+  {
+   "before": "red_mount_low",
+   "after": "blue_exit",
+   "reason": "Release the shared bay opening and west ground approach only after red is wholly on the low platform. Red may continue staging while blue exits."
+  },
+  {
+   "before": "red_stage_boost",
+   "after": "blue_mount_low",
+   "reason": "Keep the low-platform landing and blue approach clear until red has turned at x=0.3 and reached its transverse support stance."
+  }
+ ]
+}, IMG='project_page/static/images/plan/';
+  var names={blue:'Blue',red:'Red',both:'both robots'};
+  function esc(x){var d=document.createElement('div');d.textContent=x;return d.innerHTML}
+  document.querySelectorAll('.plan[data-robot]').forEach(function(box){
+    var ids=PLAN.lanes[box.dataset.robot], cur=0;
+    var q=function(c){return box.querySelector(c)};
+    function show(){
+      var s=PLAN.steps[ids[cur]];
+      q('.p-count').textContent=(cur+1)+' / '+ids.length;
+      q('.p-sel').className='plan-sel p-sel '+s.robot;
+      q('.p-sel').innerHTML='<code>'+esc(s.id)+'</code> &nbsp;<span class="tag'+(s.kind==='coupled'?' coupled':'')+'">'+s.kind+(s.kind==='coupled'?' · with partner':'')+'</span><p>'+esc(s.description)+'</p>';
+      q('.p-from').src=IMG+s.start; q('.p-from').alt='Start poses of '+s.id;
+      q('.p-to').src=IMG+s.end; q('.p-to').alt='End poses of '+s.id;
+      q('.p-from-cap').textContent='start'; q('.p-to-cap').textContent='end';
+      var d=PLAN.dependencies.filter(function(x){return x.after===s.id||x.before===s.id});
+      q('.p-dep').innerHTML=d.map(function(x){return '<b>Precedence:</b> <code>'+esc(x.before)+'</code> before <code>'+esc(x.after)+'</code>. '+esc(x.reason)}).join('<br>');
+    }
+    function go(k){cur=(cur+k+ids.length)%ids.length;show()}
+    q('.p-prev').addEventListener('click',function(){go(-1)}); q('.p-next').addEventListener('click',function(){go(1)});
+    box.addEventListener('keydown',function(e){if(e.key==='ArrowLeft'){go(-1);e.preventDefault()}if(e.key==='ArrowRight'){go(1);e.preventDefault()}});
+    show();
+  });
+})();
+document.getElementById('copy-bib').addEventListener('click',function(e){
+  var t=document.getElementById('bib').innerText, btn=e.currentTarget;
+  (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){btn.textContent='Copied'},function(){
+    var r=document.createRange(); r.selectNodeContents(document.getElementById('bib')); var s=getSelection(); s.removeAllRanges(); s.addRange(r);
+  });
+});
+</script>
+</body>
+</html>

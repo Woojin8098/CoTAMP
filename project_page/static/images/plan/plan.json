@@ -1,0 +1,122 @@
+{
+ "lanes": {
+  "blue": [
+   "blue_exit",
+   "blue_mount_low",
+   "supported_upper_transfer",
+   "blue_under_panel"
+  ],
+  "red": [
+   "red_exit",
+   "red_mount_low",
+   "red_stage_boost",
+   "supported_upper_transfer",
+   "red_to_stairs",
+   "red_stairs",
+   "red_align_beam",
+   "red_beam_cross"
+  ]
+ },
+ "steps": {
+  "red_exit": {
+   "id": "red_exit",
+   "kind": "solo",
+   "robot": "red",
+   "description": "Exit the bay first and approach the west edge of obj_007.",
+   "start": "red_exit_start.jpg",
+   "end": "red_exit_end.jpg"
+  },
+  "red_mount_low": {
+   "id": "red_mount_low",
+   "kind": "solo",
+   "robot": "red",
+   "description": "Climb the 0.4 m west ledge of obj_007.",
+   "start": "red_mount_low_start.jpg",
+   "end": "red_mount_low_end.jpg"
+  },
+  "red_stage_boost": {
+   "id": "red_stage_boost",
+   "kind": "solo",
+   "robot": "red",
+   "description": "Reach the transverse support position beside the tall platform.",
+   "start": "red_stage_boost_start.jpg",
+   "end": "red_stage_boost_end.jpg"
+  },
+  "blue_exit": {
+   "id": "blue_exit",
+   "kind": "solo",
+   "robot": "blue",
+   "description": "Exit the cleared bay and approach obj_007.",
+   "start": "blue_exit_start.jpg",
+   "end": "blue_exit_end.jpg"
+  },
+  "blue_mount_low": {
+   "id": "blue_mount_low",
+   "kind": "solo",
+   "robot": "blue",
+   "description": "Climb onto obj_007 and settle at the boost approach.",
+   "start": "blue_mount_low_start.jpg",
+   "end": "blue_mount_low_end.jpg"
+  },
+  "blue_under_panel": {
+   "id": "blue_under_panel",
+   "kind": "solo",
+   "robot": "blue",
+   "description": "Crouch, crawl beneath obj_017, and stand directly inside the blue goal.",
+   "start": "blue_under_panel_start.jpg",
+   "end": "blue_under_panel_end.jpg"
+  },
+  "red_to_stairs": {
+   "id": "red_to_stairs",
+   "kind": "solo",
+   "robot": "red",
+   "description": "Sidestep west to the centered stair approach.",
+   "start": "red_to_stairs_start.jpg",
+   "end": "red_to_stairs_end.jpg"
+  },
+  "red_stairs": {
+   "id": "red_stairs",
+   "kind": "solo",
+   "robot": "red",
+   "description": "Ascend the connected 0.15 m risers to obj_004.",
+   "start": "red_stairs_start.jpg",
+   "end": "red_stairs_end.jpg"
+  },
+  "red_align_beam": {
+   "id": "red_align_beam",
+   "kind": "solo",
+   "robot": "red",
+   "description": "Turn east on the upper staging platform.",
+   "start": "red_align_beam_start.jpg",
+   "end": "red_align_beam_end.jpg"
+  },
+  "red_beam_cross": {
+   "id": "red_beam_cross",
+   "kind": "solo",
+   "robot": "red",
+   "description": "Narrow the stance, cross obj_010, and spread into the red goal.",
+   "start": "red_beam_cross_start.jpg",
+   "end": "red_beam_cross_end.jpg"
+  },
+  "supported_upper_transfer": {
+   "id": "supported_upper_transfer",
+   "kind": "coupled",
+   "robot": "both",
+   "description": "Red provides an intermediate back support while blue climbs from obj_007 to obj_015.",
+   "start": "supported_upper_transfer_start.jpg",
+   "end": "supported_upper_transfer_end.jpg"
+  }
+ },
+ "dependencies": [
+  {
+   "before": "red_mount_low",
+   "after": "blue_exit",
+   "reason": "Release the shared bay opening and west ground approach only after red is wholly on the low platform. Red may continue staging while blue exits."
+  },
+  {
+   "before": "red_stage_boost",
+   "after": "blue_mount_low",
+   "reason": "Keep the low-platform landing and blue approach clear until red has turned at x=0.3 and reached its transverse support stance."
+  }
+ ]
+}
