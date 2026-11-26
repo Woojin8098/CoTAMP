@@ -466,7 +466,7 @@ document.querySelector('.theme-toggle').addEventListener('click',function(){
 - Trajectory feedback images sample failure intervals padded by 1 s every 0.25 s, plus initial/final and peak-error frames. Use feedback.images for attachment order and whole-motion timestamps. A synthesis failure without a trajectory may provide textual diagnostics only.
 - The host finishes when final trajectory validation passes. Each session permits one draft and at most two corrections; format, pose and trajectory failures share this correction budget. If the correction budget is exhausted, the run fails without a fresh-session retry. Stop after writing the requested JSON file; no acceptance response is needed.
 </pre></details>
-<details class="prompt"><summary>Motion guidelines (shared)</summary><pre>## Constraints
+<details class="prompt"><summary>Motion guidelines</summary><pre>## Constraints
 - Generate motion only for the participating robots and satisfy the supplied initial state and goal requirements. Preserve explicitly fixed boundary poses, required contacts and movable-object endpoints when specified.
 - Maintain support from at least three feet, or from a diagonal pair: LF–RH or RF–LH. Relocate at most one foot or one diagonal pair per robot at a time, keeping the remaining feet anchored in their support frames. Moving supports may carry those anchors through the world.
 - Keep every robot configuration within the supplied joint limits. Body poses and foot placements must be jointly reachable throughout the motion, including transitions between contact states.
